@@ -3,32 +3,82 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 
 const app = express();
+
+// Middleware
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.error(err));
+// MongoDB connection
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.error("❌ MongoDB error:", err));
 
-const SensorSchema = new mongoose.Schema({
-  temperature: Number,
-  humidity: Number,
-  createdAt: { type: Date, default: Date.now }
+// ================= SCHEMA =================
+const EspDataSchema = new mongoose.Schema({
+  deviceId: {
+    type: String,
+    required: true
+  },
+  data: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
-const Sensor = mongoose.model("Sensor", SensorSchema);
+// Collection name: esp_data
+const EspData = mongoose.model("esp_data", EspDataSchema);
 
-// POST data from ESP8266
+// ================= ESP POST API =================
 app.post("/api/data", async (req, res) => {
-  const data = new Sensor(req.body);
-  await data.save();
-  res.send({ status: "success" });
+  try {
+    const { deviceId, data } = req.body;
+
+    // Validation
+    if (!deviceId || !data) {
+      return res.status(400).json({
+        error: "deviceId and data are required"
+      });
+    }
+
+app.post("/api/data", async (req, res) => {
+  console.log("==== ESP REQUEST RECEIVED ====");
+  console.log("Headers:", req.headers);
+  console.log("Body:", req.body);
+
+  res.status(200).json({ received: req.body });
 });
 
-// GET data for dashboard
+
+
+    // Save to MongoDB
+    await EspData.create({
+      deviceId,
+      data
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Data saved to MongoDB"
+    });
+
+  } catch (error) {
+    console.error("Save error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ================= DASHBOARD GET API =================
 app.get("/api/data", async (req, res) => {
-  const data = await Sensor.find().sort({ createdAt: -1 });
+  const data = await EspData.find().sort({ createdAt: -1 });
   res.json(data);
 });
 
+// ================= SERVER =================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running"));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
