@@ -9,26 +9,34 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error(err));
 
-const SensorSchema = new mongoose.Schema({
-  temperature: Number,
-  humidity: Number,
+// 🔥 ONE schema, ONE collection
+const EspDataSchema = new mongoose.Schema({
+  deviceId: { type: String, required: true },
+  data: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
 
-const Sensor = mongoose.model("Sensor", SensorSchema);
+// 🔥 FORCE collection name
+const EspData = mongoose.model("EspData", EspDataSchema, "esp_data");
 
-// POST data from ESP8266
+// POST
 app.post("/api/data", async (req, res) => {
-  const data = new Sensor(req.body);
-  await data.save();
-  res.send({ status: "success" });
+  const { deviceId, data } = req.body;
+
+  if (!deviceId || !data) {
+    return res.status(400).json({ error: "Invalid payload", body: req.body });
+  }
+
+  const doc = await EspData.create({ deviceId, data });
+
+  res.json({ status: "success", saved: doc });
 });
 
-// GET data for dashboard
+// GET
 app.get("/api/data", async (req, res) => {
-  const data = await Sensor.find().sort({ createdAt: -1 });
-  res.json(data);
+  const docs = await EspData.find().sort({ createdAt: -1 });
+  res.json(docs);
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running"));
+app.listen(PORT, () => console.log("Server running on", PORT));
