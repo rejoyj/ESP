@@ -6,18 +6,15 @@ require("dotenv").config();
 const app = express();
 
 /* ==============================
-   🔥 CORS — FIXED PROPERLY
+   ✅ CORS — FIXED (Node 22 SAFE)
    ============================== */
 app.use(
   cors({
     origin: "https://project-x-dxq8.vercel.app",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type"],
   })
 );
-
-// Handle preflight
-app.options("*", cors());
 
 app.use(express.json());
 
@@ -47,14 +44,13 @@ const EspDataSchema = new mongoose.Schema(
       default: "",
     },
   },
-  { timestamps: true } // ⭐ IMPORTANT
+  { timestamps: true }
 );
 
-// Force collection name
 const EspData = mongoose.model("EspData", EspDataSchema, "esp_data");
 
 /* ==============================
-   POST → ESP8266 sends UID
+   POST → ESP sends UID
    ============================== */
 app.post("/api/data", async (req, res) => {
   try {
@@ -81,7 +77,7 @@ app.post("/api/data", async (req, res) => {
 });
 
 /* ==============================
-   GET → Frontend Table Data
+   GET → Frontend Table
    ============================== */
 app.get("/api/data", async (req, res) => {
   try {
@@ -123,10 +119,7 @@ app.put("/api/data/:id", async (req, res) => {
       { new: true }
     );
 
-    res.json({
-      success: true,
-      updated,
-    });
+    res.json({ success: true, updated });
   } catch (error) {
     console.error("❌ PUT Error:", error);
     res.status(500).json({ error: "Note update failed" });
