@@ -1,47 +1,61 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors"); 
+const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
+
+/* ==============================
+   🔥 CORS — FIXED PROPERLY
+   ============================== */
+app.use(
+  cors({
+    origin: "https://project-x-dxq8.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+
+// Handle preflight
+app.options("*", cors());
+
 app.use(express.json());
 
-// ------------------------------------
-// MongoDB Connection
-// ------------------------------------
+/* ==============================
+   MongoDB Connection
+   ============================== */
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => console.error("❌ MongoDB error:", err));
+  .catch((err) => console.error("❌ MongoDB error:", err));
 
-// ------------------------------------
-// Schema
-// ------------------------------------
-const EspDataSchema = new mongoose.Schema({
-  deviceId: {
-    type: String,
-    required: true
+/* ==============================
+   Schema
+   ============================== */
+const EspDataSchema = new mongoose.Schema(
+  {
+    deviceId: {
+      type: String,
+      required: true,
+    },
+    uid: {
+      type: String,
+      required: true,
+    },
+    note: {
+      type: String,
+      default: "",
+    },
   },
-  uid: {
-    type: String,
-    required: true
-  },
-  note: {
-    type: String,
-    default: ""
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+  { timestamps: true } // ⭐ IMPORTANT
+);
 
 // Force collection name
 const EspData = mongoose.model("EspData", EspDataSchema, "esp_data");
 
-// ------------------------------------
-// POST → ESP8266 sends UID
-// ------------------------------------
+/* ==============================
+   POST → ESP8266 sends UID
+   ============================== */
 app.post("/api/data", async (req, res) => {
   try {
     const { deviceId, uid } = req.body;
@@ -50,18 +64,15 @@ app.post("/api/data", async (req, res) => {
       return res.status(400).json({
         error: "Invalid payload",
         expected: { deviceId: "string", uid: "string" },
-        received: req.body
+        received: req.body,
       });
     }
 
-    const savedData = await EspData.create({
-      deviceId,
-      uid
-    });
+    const savedData = await EspData.create({ deviceId, uid });
 
     res.status(201).json({
-      status: "success",
-      saved: savedData
+      success: true,
+      saved: savedData,
     });
   } catch (error) {
     console.error("❌ POST Error:", error);
@@ -69,22 +80,26 @@ app.post("/api/data", async (req, res) => {
   }
 });
 
-// ------------------------------------
-// GET → Frontend Table Data
-// ------------------------------------
+/* ==============================
+   GET → Frontend Table Data
+   ============================== */
 app.get("/api/data", async (req, res) => {
   try {
     const data = await EspData.find().sort({ createdAt: -1 });
 
-    const formatted = data.map(item => {
+    const formatted = data.map((item) => {
       const d = new Date(item.createdAt);
 
       return {
         id: item._id,
-        date: d.toLocaleDateString("en-IN"),
-        time: d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
+        date: d.toLocaleDateString("en-IN", {
+          timeZone: "Asia/Kolkata",
+        }),
+        time: d.toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+        }),
         link: item.uid,
-        note: item.note || ""
+        note: item.note || "",
       };
     });
 
@@ -95,9 +110,9 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
-// ------------------------------------
-// PUT → Update Note from Frontend
-// ------------------------------------
+/* ==============================
+   PUT → Update Note
+   ============================== */
 app.put("/api/data/:id", async (req, res) => {
   try {
     const { note } = req.body;
@@ -110,7 +125,7 @@ app.put("/api/data/:id", async (req, res) => {
 
     res.json({
       success: true,
-      updated
+      updated,
     });
   } catch (error) {
     console.error("❌ PUT Error:", error);
@@ -118,9 +133,9 @@ app.put("/api/data/:id", async (req, res) => {
   }
 });
 
-// ------------------------------------
-// Server Start
-// ------------------------------------
+/* ==============================
+   Server Start
+   ============================== */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
