@@ -81,7 +81,7 @@ app.get("/api/data", async (req, res) => {
       return {
         id: item._id,
         date: d.toLocaleDateString("en-IN"),
-        time: d.toLocaleTimeString("en-IN"),
+        time: d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
         link: item.uid,
         note: item.note || ""
       };
@@ -124,4 +124,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-  
