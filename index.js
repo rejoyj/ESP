@@ -8,12 +8,13 @@ app.use(express.json());
 // ------------------------------------
 // MongoDB Connection
 // ------------------------------------
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB error:", err));
 
 // ------------------------------------
-// Schema (UID matches Arduino payload)
+// Schema
 // ------------------------------------
 const EspDataSchema = new mongoose.Schema({
   deviceId: {
@@ -24,35 +25,34 @@ const EspDataSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  note: {
+    type: String,
+    default: ""
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-// 🔥 Force collection name
+// Force collection name
 const EspData = mongoose.model("EspData", EspDataSchema, "esp_data");
 
 // ------------------------------------
-// POST → Receive RFID UID
+// POST → ESP8266 sends UID
 // ------------------------------------
 app.post("/api/data", async (req, res) => {
   try {
     const { deviceId, uid } = req.body;
 
-    // Validation
     if (!deviceId || !uid) {
       return res.status(400).json({
         error: "Invalid payload",
-        expected: {
-          deviceId: "string",
-          uid: "string"
-        },
+        expected: { deviceId: "string", uid: "string" },
         received: req.body
       });
     }
 
-    // Save to DB
     const savedData = await EspData.create({
       deviceId,
       uid
@@ -62,22 +62,58 @@ app.post("/api/data", async (req, res) => {
       status: "success",
       saved: savedData
     });
-
   } catch (error) {
-    console.error("❌ Server Error:", error);
+    console.error("❌ POST Error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // ------------------------------------
-// GET → Fetch All RFID Logs
+// GET → Frontend Table Data
 // ------------------------------------
 app.get("/api/data", async (req, res) => {
   try {
     const data = await EspData.find().sort({ createdAt: -1 });
-    res.json(data);
+
+    const formatted = data.map(item => {
+      const d = new Date(item.createdAt);
+
+      return {
+        id: item._id,
+        date: d.toLocaleDateString("en-IN"),
+        time: d.toLocaleTimeString("en-IN"),
+        link: item.uid,
+        note: item.note || ""
+      };
+    });
+
+    res.json(formatted);
   } catch (error) {
+    console.error("❌ GET Error:", error);
     res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+// ------------------------------------
+// PUT → Update Note from Frontend
+// ------------------------------------
+app.put("/api/data/:id", async (req, res) => {
+  try {
+    const { note } = req.body;
+
+    const updated = await EspData.findByIdAndUpdate(
+      req.params.id,
+      { note },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      updated
+    });
+  } catch (error) {
+    console.error("❌ PUT Error:", error);
+    res.status(500).json({ error: "Note update failed" });
   }
 });
 
@@ -88,3 +124,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+  
