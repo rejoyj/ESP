@@ -33,11 +33,21 @@ const EspDataSchema = new mongoose.Schema(
   {
     deviceId: {
       type: String,
-      required: true,
+      default: "ESP8266-RC522",
     },
     uid: {
       type: String,
       required: true,
+    },
+    url: {
+      type: String,
+      default: "",
+    },
+    date: {
+      type: String,
+    },
+    time: {
+      type: String,
     },
     note: {
       type: String,
@@ -47,34 +57,41 @@ const EspDataSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+
 const EspData = mongoose.model("EspData", EspDataSchema, "esp_data");
 
 /* ==============================
    POST → ESP sends UID
    ============================== */
-app.post("/api/data", async (req, res) => {
+app.post("/activity", async (req, res) => {
   try {
-    const { deviceId, uid } = req.body;
+    const { uid, url, date, time, note } = req.body;
 
-    if (!deviceId || !uid) {
+    if (!uid) {
       return res.status(400).json({
-        error: "Invalid payload",
-        expected: { deviceId: "string", uid: "string" },
+        error: "UID is required",
         received: req.body,
       });
     }
 
-    const savedData = await EspData.create({ deviceId, uid });
+    const saved = await EspData.create({
+      uid,
+      url,
+      date,
+      time,
+      note,
+    });
 
     res.status(201).json({
       success: true,
-      saved: savedData,
+      saved,
     });
   } catch (error) {
-    console.error("❌ POST Error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("❌ ESP POST Error:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
+
 
 /* ==============================
    GET → Frontend Table
