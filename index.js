@@ -111,7 +111,7 @@ app.get("/api/data", async (req, res) => {
         time: d.toLocaleTimeString("en-IN", {
           timeZone: "Asia/Kolkata",
         }),
-        link: item.url,
+        url: item.url,
         note: item.note || "",
       };
     });
